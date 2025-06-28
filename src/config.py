@@ -7,7 +7,7 @@ class Config:
     """Configuration settings"""
     
     # Ethereum Node Settings
-    ETH_NODE_URL = os.getenv('ETH_NODE_URL', 'https://eth-mainnet.g.alchemy.com/v2/demo')
+    ETH_NODE_URL = "https://eth-mainnet.g.alchemy.com/v2/_TKdoChuQW7COEa9NHXg7j3lPq9JDZZM"
     
     # External API URLs
     MEMPOOL_APIS = {
@@ -40,6 +40,18 @@ class Config:
     DEFAULT_POOL_LIQUIDITY = 1000000  # $1M
     DEFAULT_VOLATILITY_SCORE = 0.5
     DEFAULT_BASE_PRIORITY_FEE = 2.0  # gwei
+    
+    # API Keys
+    ETHERSCAN_API_KEY = "P35Q6ZDPJU3FQR3NRP9BPZCFA5V6V1YMRR"
+    
+    # Add backup nodes
+    BACKUP_NODES = [
+        "https://ethereum.publicnode.com",
+        "https://rpc.ankr.com/eth", 
+        "https://eth.llamarpc.com",
+        "https://ethereum.blockpi.network/v1/rpc/public",
+        "https://cloudflare-eth.com"
+    ]
 
 class NetworkConfig:
     """Ethereum network specific configuration"""
