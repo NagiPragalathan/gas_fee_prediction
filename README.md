@@ -1,0 +1,1 @@
+pip install web3 fastapi uvicorn asyncio websockets
