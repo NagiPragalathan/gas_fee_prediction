@@ -16,10 +16,23 @@ class Config:
         '1inch': 'https://gas-price-api.1inch.io/v1.4/1'
     }
     
+    # ✅ NEW: DEX and Market Data APIs
+    DEX_APIS = {
+        'uniswap_v3': 'https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3',
+        'sushiswap': 'https://api.thegraph.com/subgraphs/name/sushiswap/exchange',
+        '1inch': 'https://api.1inch.io/v5.0/1',
+        'coingecko': 'https://api.coingecko.com/api/v3',
+        'defipulse': 'https://data-api.defipulse.com/api/v1'
+    }
+    
     # Model Training Settings
     HISTORICAL_DATA_HOURS = 168  # 7 days
-    CACHE_VALIDITY_SECONDS = 30
+    CACHE_VALIDITY_SECONDS = 300  # 5 minutes
     BACKGROUND_UPDATE_INTERVAL = 10  # seconds
+    
+    # ✅ NEW: Automation Cache Settings
+    LIQUIDITY_CACHE_DURATION = 300  # 5 minutes
+    VOLATILITY_CACHE_DURATION = 600  # 10 minutes
     
     # LightGBM Parameters
     LIGHTGBM_PARAMS = {
@@ -41,8 +54,17 @@ class Config:
     DEFAULT_VOLATILITY_SCORE = 0.5
     DEFAULT_BASE_PRIORITY_FEE = 2.0  # gwei
     
+    # ✅ NEW: Automation Smart Defaults
+    SMART_LIQUIDITY_TIERS = {
+        1000: 500000,      # $1K trade -> $500K liquidity
+        10000: 2000000,    # $10K trade -> $2M liquidity  
+        100000: 10000000,  # $100K trade -> $10M liquidity
+        1000000: 50000000  # $1M+ trade -> $50M liquidity
+    }
+    
     # API Keys
     ETHERSCAN_API_KEY = "P35Q6ZDPJU3FQR3NRP9BPZCFA5V6V1YMRR"
+    ONEINCH_API_KEY = "uzF2lXeO9pYtpjthDs0ltrkVwDcup6bd"
     
     # Add backup nodes
     BACKUP_NODES = [
@@ -52,6 +74,12 @@ class Config:
         "https://ethereum.blockpi.network/v1/rpc/public",
         "https://cloudflare-eth.com"
     ]
+
+    # Performance settings
+    FAST_MODE = True  # Enable fast mode by default
+    MAX_PRIORITY_SAMPLES = 5  # Reduce from 10 to 5 for speed
+    SKIP_HEAVY_ANALYSIS = True  # Skip time-consuming analysis
+    CACHE_DURATION = 30  # Cache results for 30 seconds
 
 class NetworkConfig:
     """Ethereum network specific configuration"""
@@ -72,4 +100,13 @@ class NetworkConfig:
     
     # Mempool thresholds
     HIGH_MEMPOOL_SIZE = 100000  # transactions
-    MEDIUM_MEMPOOL_SIZE = 50000  # transactions 
+    MEDIUM_MEMPOOL_SIZE = 50000  # transactions
+
+    # ✅ NEW: Urgency calculation thresholds
+    URGENCY_THRESHOLDS = {
+        'high_congestion': 95,      # Network utilization %
+        'medium_congestion': 85,    # Network utilization %
+        'large_trade': 50000,       # USD
+        'medium_trade': 10000,      # USD
+        'high_mempool': 200000,     # Transaction count
+    } 
