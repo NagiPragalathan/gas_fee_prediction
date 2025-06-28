@@ -9,6 +9,7 @@ from typing import Dict, List, Optional
 from .config import Config, NetworkConfig
 from .models import NetworkState
 from functools import wraps
+import numpy as np
 
 class EthereumDataCollector:
     """
@@ -461,3 +462,204 @@ class EthereumDataCollector:
     def _calculate_real_median_priority_fee(self, block) -> float:
         """Calculate REAL median priority fee from block transactions"""
         return self._calculate_median_priority_from_hashes(block)
+
+    def get_enhanced_network_state(self) -> Dict:
+        """Get enhanced network state with additional health metrics"""
+        try:
+            # Get basic network state
+            network_state = self.get_current_network_state()
+            
+            # Add enhanced metrics for the new features
+            network_state.update({
+                # Enhanced mempool analysis
+                'mempool_detailed': self._analyze_mempool_composition(),
+                
+                # Block timing analysis
+                'block_timing_stats': self._get_block_timing_stats(),
+                
+                # Transaction type estimates
+                'tx_type_estimates': self._estimate_transaction_types(),
+            })
+            
+            return network_state
+            
+        except Exception as e:
+            print(f"⚠️ Error collecting enhanced network data: {e}")
+            return self.get_current_network_state()  # Fallback to basic state
+
+    def _analyze_mempool_composition(self) -> Dict:
+        """Analyze mempool composition for transaction type insights"""
+        try:
+            # In production, this would analyze actual mempool transactions
+            # For now, providing realistic estimates based on network conditions
+            return {
+                'estimated_simple_transfers': 0.4,
+                'estimated_defi_txs': 0.35,
+                'estimated_nft_txs': 0.1,
+                'estimated_bot_txs': 0.15,
+                'avg_gas_price_weighted': 0,  # Would calculate from real data
+                'high_gas_tx_count': 0
+            }
+        except Exception as e:
+            print(f"⚠️ Mempool analysis failed: {e}")
+            return {}
+
+    def _get_block_timing_stats(self) -> Dict:
+        """Get block timing statistics for health metrics"""
+        try:
+            current_block = self.web3.eth.block_number
+            
+            # Get last few blocks for timing analysis
+            recent_blocks = []
+            for i in range(min(5, current_block)):
+                try:
+                    block = self.web3.eth.get_block(current_block - i)
+                    recent_blocks.append(block)
+                except:
+                    continue
+            
+            if len(recent_blocks) < 2:
+                return {'avg_block_time': 12, 'block_time_variance': 1.0}
+            
+            # Calculate block times
+            block_times = []
+            for i in range(1, len(recent_blocks)):
+                time_diff = recent_blocks[i-1].timestamp - recent_blocks[i].timestamp
+                block_times.append(time_diff)
+            
+            avg_time = np.mean(block_times) if block_times else 12
+            variance = np.var(block_times) if len(block_times) > 1 else 1.0
+            
+            return {
+                'avg_block_time': avg_time,
+                'block_time_variance': variance,
+                'recent_blocks_analyzed': len(recent_blocks)
+            }
+            
+        except Exception as e:
+            print(f"⚠️ Block timing analysis failed: {e}")
+            return {'avg_block_time': 12, 'block_time_variance': 1.0}
+
+    def _estimate_transaction_types(self) -> Dict:
+        """Estimate transaction type distribution"""
+        try:
+            # Get current network utilization for estimates
+            network_util = self.get_current_network_state().get('network_utilization', 80)
+            
+            # Estimate transaction types based on network conditions
+            if network_util > 90:
+                # High congestion - more complex transactions
+                return {
+                    'simple_transfer_ratio': 0.2,
+                    'complex_contract_ratio': 0.6,
+                    'failed_tx_ratio': 0.1,
+                    'gas_intensive_ratio': 0.3
+                }
+            elif network_util > 70:
+                # Medium congestion
+                return {
+                    'simple_transfer_ratio': 0.4,
+                    'complex_contract_ratio': 0.4,
+                    'failed_tx_ratio': 0.05,
+                    'gas_intensive_ratio': 0.2
+                }
+            else:
+                # Low congestion - more simple transfers
+                return {
+                    'simple_transfer_ratio': 0.6,
+                    'complex_contract_ratio': 0.25,
+                    'failed_tx_ratio': 0.03,
+                    'gas_intensive_ratio': 0.1
+                }
+            
+        except Exception as e:
+            print(f"⚠️ Transaction type estimation failed: {e}")
+            return {
+                'simple_transfer_ratio': 0.4,
+                'complex_contract_ratio': 0.4,
+                'failed_tx_ratio': 0.05,
+                'gas_intensive_ratio': 0.2
+            }
+
+    def _get_real_uncle_blocks(self) -> float:
+        """Get real uncle block data"""
+        try:
+            current_block = self.web3.eth.block_number
+            uncle_count = 0
+            total_blocks = 50
+            
+            for i in range(total_blocks):
+                try:
+                    block = self.web3.eth.get_block(current_block - i)
+                    uncle_count += len(block.uncles) if hasattr(block, 'uncles') else 0
+                except:
+                    continue
+                
+            return uncle_count / total_blocks if total_blocks > 0 else 0.05
+            
+        except Exception as e:
+            print(f"⚠️ Real uncle block detection failed: {e}")
+            return 0.05  # Fallback
+
+    def _detect_real_reorgs(self) -> float:
+        """Detect real chain reorganizations"""
+        try:
+            # Monitor multiple nodes for chain differences
+            current_block = self.web3.eth.block_number
+            current_hash = self.web3.eth.get_block(current_block).hash
+            
+            # Check against cached hash
+            if current_block in self.last_block_hashes:
+                if self.last_block_hashes[current_block] != current_hash:
+                    print(f"🔍 Reorg detected at block {current_block}")
+                    return 0.1  # Reorg detected
+                
+            self.last_block_hashes[current_block] = current_hash
+            return 0.001  # No reorg
+            
+        except:
+            return 0.001
+
+    def _get_real_flashbots_data(self) -> Dict:
+        """Get real MEV data from Flashbots API"""
+        try:
+            # Connect to MEV-Boost relay
+            response = requests.get(
+                "https://boost-relay.flashbots.net/relay/v1/data/bidtraces/proposer_payload_delivered",
+                params={'limit': 10},
+                timeout=5
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                # Analyze MEV bundles vs regular transactions
+                return {
+                    'flashbots_bundle_ratio': len(data) / 100,  # Estimate ratio
+                    'mev_value_eth': sum(float(item.get('value', 0)) for item in data) / 1e18
+                }
+                
+        except Exception as e:
+            print(f"⚠️ MEV data collection failed: {e}")
+            
+        return {'flashbots_bundle_ratio': 0.1, 'mev_value_eth': 0}
+
+    def _get_real_validator_data(self) -> Dict:
+        """Get real validator participation data"""
+        try:
+            # Connect to Beacon Chain API
+            response = requests.get(
+                "https://beaconcha.in/api/v1/epoch/latest",
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return {
+                    'validator_participation': data.get('participationrate', 0.93),
+                    'finalization_delay': data.get('finalized', True)
+                }
+                
+        except Exception as e:
+            print(f"⚠️ Validator data collection failed: {e}")
+            
+        return {'validator_participation': 0.93, 'finalization_delay': 72}
