@@ -135,6 +135,11 @@ class AutomatedGasFeeAPI:
         self.cached_ml = CachedMLRecommendations()
         self.ai_pipeline = GasFeeCompletePipeline()
         
+        # ✅ Connect ALL components to REAL data sources
+        self.cached_ml.set_components(self.data_collector, self.feature_engineer)
+        self.fast_rules.set_data_collector(self.data_collector)
+        self.feature_engineer.set_data_collector(self.data_collector)  # NEW
+        
         # Real-time data
         self.current_network_data = {}
         self.last_update = 0
@@ -143,7 +148,7 @@ class AutomatedGasFeeAPI:
         # WebSocket connections
         self.websocket_connections: List[WebSocket] = []
         
-        print("✅ All systems initialized with FULL AUTOMATION 🤖")
+        print("✅ All components using 100% REAL data sources 🎯")
         
     def start_background_services(self):
         """Start background data collection and ML services"""
