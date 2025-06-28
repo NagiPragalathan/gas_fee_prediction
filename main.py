@@ -14,7 +14,7 @@ Endpoints:
 - GET /cache/status - Get ML cache status for debugging
 """
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Dict, Optional, List
@@ -27,6 +27,7 @@ import json
 import logging
 from datetime import datetime
 import uvicorn
+from contextlib import asynccontextmanager
 
 # Add src to path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
@@ -390,6 +391,16 @@ class AutomatedGasFeeAPI:
 api = AutomatedGasFeeAPI()
 
 # Create FastAPI app
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    print("🚀 API startup complete")
+    api.start_background_services()
+    yield
+    # Shutdown
+    print("🛑 API shutdown")
+    api.stop_background_services()
+
 app = FastAPI(
     title="⚡ FULLY AUTOMATED Gas Fee Estimation API 🤖",
     description="""
@@ -419,7 +430,8 @@ app = FastAPI(
     """,
     version="2.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Add CORS middleware
@@ -432,16 +444,6 @@ app.add_middleware(
 )
 
 # ===== AUTOMATED API ENDPOINTS =====
-
-@app.on_event("startup")
-async def startup_event():
-    """Start background services when API starts"""
-    api.start_background_services()
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Stop background services when API shuts down"""
-    api.stop_background_services()
 
 @app.get("/health")
 async def health_check():
@@ -515,50 +517,27 @@ async def get_all_gas_fee_recommendations(request: AutomatedTradeRequest):
     return api.get_all_recommendations(request)
 
 @app.post("/gas/automated", response_model=RecommendationResponse)
-async def get_simple_automated_recommendation(
-    trade_size_usd: float = Field(..., description="Trade size in USD (ONLY required parameter!)"),
-    token_address: Optional[str] = Field(None, description="Optional token address for better estimates")
-) -> RecommendationResponse:
-    """
-    🎯 ULTIMATE SIMPLICITY - Zero-config gas fee recommendation
-    
-    **Simplest possible endpoint - just provide trade size!**
-    
-    Everything automated:
-    - ✅ Pool liquidity (from DEX APIs)
-    - ✅ Volatility score (from market data) 
-    - ✅ User urgency (from network conditions)
-    - ✅ Network data (real-time collection)
-    
-    Example:
-    ```json
-    {
-        "trade_size_usd": 10000,
-        "token_address": "0x..." // optional
-    }
-    ```
-    """
+async def get_automated_gas_recommendation(request: AutomatedTradeRequest):
+    """🤖 FULLY AUTOMATED - Zero user input gas fee recommendation"""
     try:
-        start_time = time.perf_counter()
+        start_time = time.time()
         
-        # Create minimal request object
-        request = AutomatedTradeRequest(
-            trade_size_usd=trade_size_usd,
-            token_address=token_address
+        auto_params = api.get_all_recommendations(request)
+        
+        return RecommendationResponse(
+            status="success",
+            data=auto_params,
+            latency_ms=(time.time() - start_time) * 1000,
+            automation=True,
+            source="fully_automated"
         )
         
-        # Get comprehensive automated recommendation
-        recommendation = api.get_full_ai_recommendation(request)
-        
-        # Update metadata
-        recommendation.source = "simplified_automated"
-        recommendation.user_inputs_required = 1
-        
-        return recommendation
-        
     except Exception as e:
-        logger.error(f"Simple automated recommendation failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Automated recommendation failed: {str(e)}")
+        return RecommendationResponse(
+            status="error",
+            error=str(e),
+            latency_ms=(time.time() - start_time) * 1000
+        )
 
 # ===== LEGACY COMPATIBILITY ENDPOINTS =====
 
