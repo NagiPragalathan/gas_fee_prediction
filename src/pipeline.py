@@ -99,114 +99,35 @@ class GasFeeCompletePipeline:
             return self.auto_data_cache
         
         try:
-            # Run all data fetching in parallel for speed
-            network_data = await self._get_network_data()
-            dex_data = await self._get_dex_data()
-            market_data = await self._get_market_data()
-            mempool_data = await self._get_mempool_data()
+            # Use the working automation method from data_collector
+            auto_params = self.data_collector.get_fully_automated_params(
+                trade_size_usd=1000,  # Default for background processing
+                token_address=None
+            )
             
-            # Combine all automated parameters
-            auto_params = {
-                **network_data,
-                **dex_data,
-                **market_data,
-                **mempool_data,
-                # Add smart defaults for missing values
-                'trade_size_usd': 1000,  # Default trade size
-                'user_urgency': 0.5,     # Medium urgency
+            # Ensure all required keys exist
+            required_params = {
+                'base_fee': auto_params.get('base_fee', 25.0),
+                'network_util': auto_params.get('network_util', 80.0),
+                'mempool_size': auto_params.get('mempool_size', 150000),
+                'pool_liquidity_usd': auto_params.get('pool_liquidity_usd', 5000000),
+                'volatility_score': auto_params.get('volatility_score', 0.3),
+                'user_urgency': auto_params.get('user_urgency', 0.5),
+                'trade_size_usd': 1000,
                 'auto_fetched': True,
                 'timestamp': datetime.now().isoformat()
             }
             
             # Cache the results
-            self.auto_data_cache = auto_params
+            self.auto_data_cache = required_params
             self.last_auto_update = current_time
             
-            print(f"✅ Auto-fetched {len(auto_params)} parameters")
-            return auto_params
+            print(f"✅ Auto-fetched parameters: liquidity=${required_params['pool_liquidity_usd']:,.0f}")
+            return required_params
             
         except Exception as e:
             print(f"⚠️ Auto parameter fetch failed: {e}")
-            # Return safe defaults if all auto-fetching fails
             return self._get_default_automated_params()
-    
-    async def _get_network_data(self) -> Dict:
-        """Auto-fetch current network data"""
-        try:
-            network_state = self.data_collector.get_current_network_state()
-            return {
-                'base_fee': network_state.get('baseFeePerGas', 25000000000) / 1e9,  # Convert to gwei
-                'network_util': network_state.get('network_utilization', 80.0),
-                'gas_used': network_state.get('gasUsed', 25000000),
-                'gas_limit': network_state.get('gasLimit', 30000000),
-                'block_number': network_state.get('blockNumber', 0)
-            }
-        except Exception as e:
-            print(f"⚠️ Network data fetch failed: {e}")
-            return {
-                'base_fee': 25.0,
-                'network_util': 80.0,
-                'gas_used': 25000000,
-                'gas_limit': 30000000
-            }
-    
-    async def _get_dex_data(self) -> Dict:
-        """Auto-fetch DEX liquidity and pool data"""
-        try:
-            # Use data collector's DEX methods
-            pool_data = self.data_collector.get_uniswap_pool_data()
-            
-            return {
-                'pool_liquidity_usd': pool_data.get('liquidity_usd', 5000000),
-                'pool_volume_24h': pool_data.get('volume_24h', 1000000),
-                'pool_fee_tier': pool_data.get('fee_tier', 0.003),
-                'pool_sqrt_price': pool_data.get('sqrt_price', 1000000)
-            }
-        except Exception as e:
-            print(f"⚠️ DEX data fetch failed: {e}")
-            return {
-                'pool_liquidity_usd': 5000000,  # Default $5M liquidity
-                'pool_volume_24h': 1000000,
-                'pool_fee_tier': 0.003
-            }
-    
-    async def _get_market_data(self) -> Dict:
-        """Auto-fetch market volatility and price data"""
-        try:
-            market_data = self.data_collector.get_market_volatility()
-            
-            return {
-                'volatility_score': market_data.get('volatility_24h', 0.3),
-                'price_change_24h': market_data.get('price_change_24h_percent', 0),
-                'volume_change_24h': market_data.get('volume_change_24h_percent', 0),
-                'market_cap_rank': market_data.get('market_cap_rank', 50)
-            }
-        except Exception as e:
-            print(f"⚠️ Market data fetch failed: {e}")
-            return {
-                'volatility_score': 0.3,  # Default medium volatility
-                'price_change_24h': 0,
-                'volume_change_24h': 0
-            }
-    
-    async def _get_mempool_data(self) -> Dict:
-        """Auto-fetch mempool congestion data"""
-        try:
-            mempool_data = self.data_collector.get_mempool_analysis()
-            
-            return {
-                'mempool_size': mempool_data.get('pending_count', 150000),
-                'mempool_congestion': mempool_data.get('congestion_level', 60),
-                'avg_mempool_time': mempool_data.get('avg_wait_time_seconds', 120),
-                'mempool_priority_threshold': mempool_data.get('priority_threshold_gwei', 2.0)
-            }
-        except Exception as e:
-            print(f"⚠️ Mempool data fetch failed: {e}")
-            return {
-                'mempool_size': 150000,  # Default mempool size
-                'mempool_congestion': 60,
-                'avg_mempool_time': 120
-            }
     
     def _get_default_automated_params(self) -> Dict:
         """Safe default parameters when auto-fetching fails"""
